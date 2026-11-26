@@ -1,0 +1,55 @@
+
+name: Build IMAN APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [principal]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract IMAN project
+        run: |
+          ZIP_FILE=$(find . -maxdepth 1 -iname '*.zip' -print -quit)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ZIP IMAN introuvable"
+            exit 1
+          fi
+          mkdir -p /tmp/iman
+          unzip -q "$ZIP_FILE" -d /tmp/iman
+          cp -a /tmp/iman/. .
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: IMAN-debug-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
